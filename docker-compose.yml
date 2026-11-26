@@ -1,0 +1,57 @@
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-scountbcr
+    ports:
+      - "8082:80"
+    volumes:
+      - ./src:/var/www
+      - ./docs:/docs
+      - ./nginx/conf.d/:/etc/nginx/conf.d/
+    depends_on:
+      - app
+      - db
+
+  db:
+    image: postgres:16-alpine
+    container_name: db-scountbcr
+    volumes:
+      - ./postgresql/data:/var/lib/postgresql/data
+    ports:
+      - "5435:5432"
+    environment:
+      POSTGRES_DB: scountbcr
+      POSTGRES_USER: scountbcr
+      POSTGRES_PASSWORD: scountbcr
+
+  app:
+    container_name: php-scountbcr
+    build:
+      context: ./php
+      dockerfile: Dockerfile
+    volumes:
+      - ./src:/var/www
+      - ./docs:/docs
+    ports:
+      - "9002:9000"
+      - "5174:5174"
+    working_dir: /var/www
+    environment:
+      APP_NAME: ScountBCR
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8082
+      APP_LOCALE: pt_BR
+      APP_FALLBACK_LOCALE: pt_BR
+      APP_FAKER_LOCALE: pt_BR
+      APP_TIMEZONE: America/Sao_Paulo
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_DATABASE: scountbcr
+      DB_USERNAME: scountbcr
+      DB_PASSWORD: scountbcr
+      SESSION_DRIVER: file
+      SESSION_SECURE_COOKIE: "false"
+    depends_on:
+      - db
