@@ -18,6 +18,7 @@ class GameMatch extends Model
     protected $fillable = [
         'team_id', 'opponent_id', 'competition_id', 'match_date', 'match_time', 'location',
         'phase', 'match_type', 'team_score', 'opponent_score', 'status', 'notes',
+        'scout_period_length', 'scout_clock_remaining', 'scout_clock_running_at',
     ];
 
     protected function casts(): array
@@ -25,6 +26,7 @@ class GameMatch extends Model
         return [
             'match_date' => 'date',
             'status' => MatchStatus::class,
+            'scout_clock_running_at' => 'datetime',
         ];
     }
 

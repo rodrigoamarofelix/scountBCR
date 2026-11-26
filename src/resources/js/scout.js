@@ -1,0 +1,1 @@
+import './scout-tablet';

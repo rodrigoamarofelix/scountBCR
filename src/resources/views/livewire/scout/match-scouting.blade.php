@@ -2,123 +2,99 @@
     $athlete = $this->selectedAthlete;
     $stats = $this->athleteStats;
     $mStats = $this->matchStats;
+    $homeTeam = $this->match->team;
+    $away = $this->match->opponent;
+    $awayLogo = $away?->resolvedLogoPath();
 @endphp
-<div class="min-h-screen bg-zinc-950 text-zinc-100">
-    {{-- Cabeçalho fixo --}}
+<div
+    class="min-h-screen bg-zinc-950 text-zinc-100"
+    x-data="scoutTablet({ matchId: @js($matchId), csrf: @js(csrf_token()) })"
+    @if($clockRunning) wire:poll.1s="tickClock" @endif
+>
     <header class="sticky top-0 z-30 border-b border-zinc-800 bg-zinc-900 shadow-lg">
-        <div class="mx-auto max-w-5xl px-4 py-4">
-            <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div class="mx-auto max-w-5xl px-4 py-3">
+            <div class="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                    <p class="text-xs font-semibold uppercase tracking-wider text-amber-400">Scouting ao vivo</p>
-                    @php
-                        $homeTeam = $this->match->team;
-                        $away = $this->match->opponent;
-                    @endphp
-                    <h1 class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xl font-bold sm:gap-x-3 sm:text-2xl">
-                        <span class="inline-flex items-center gap-2">
-                            @if($homeTeam->logo_path)
-                                <img
-                                    src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($homeTeam->logo_path) }}"
-                                    alt="{{ $homeTeam->name }}"
-                                    class="h-12 w-12 shrink-0 rounded-full border-2 border-zinc-600 bg-zinc-800 object-cover shadow-inner sm:h-14 sm:w-14"
-                                >
-                            @else
-                                <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-zinc-600 bg-zinc-800 text-sm font-black text-amber-400 sm:h-14 sm:w-14 sm:text-base">
-                                    {{ $homeTeam->short_name }}
-                                </span>
-                            @endif
-                            <span>{{ $homeTeam->short_name }}</span>
-                        </span>
-                        <span class="text-zinc-500">vs</span>
-                        <span class="inline-flex items-center gap-2">
-                            @php $awayLogo = $away?->resolvedLogoPath(); @endphp
-                            @if($awayLogo)
-                                <img
-                                    src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($awayLogo) }}"
-                                    alt="{{ $away->name }}"
-                                    class="h-12 w-12 shrink-0 rounded-full border-2 border-zinc-600 bg-zinc-800 object-cover shadow-inner sm:h-14 sm:w-14"
-                                >
-                            @else
-                                <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-zinc-600 bg-zinc-800 text-sm font-black text-sky-400 sm:h-14 sm:w-14 sm:text-base">
-                                    {{ $away?->short_name ?? '?' }}
-                                </span>
-                            @endif
-                            <span>{{ $away?->short_name ?? $away?->name }}</span>
-                        </span>
-                    </h1>
-                    <p class="mt-1 text-sm text-zinc-400">
-                        {{ $this->match->match_date->format('d/m/Y') }}
-                        @if($this->match->competition)
-                            · {{ $this->match->competition->name }}
+                    <p class="text-xs font-semibold uppercase tracking-wider text-amber-400">Scouting — modo tablet</p>
+                    <div class="mt-1 flex flex-wrap items-center gap-2 text-sm">
+                        @if($homeTeam->logo_path)
+                            <img src="{{ Storage::disk('public')->url($homeTeam->logo_path) }}" alt="" class="h-9 w-9 rounded-full border border-zinc-600 object-cover">
                         @endif
-                    </p>
+                        <span class="font-bold">{{ $homeTeam->short_name }}</span>
+                        <span class="text-zinc-500">vs</span>
+                        @if($awayLogo)
+                            <img src="{{ Storage::disk('public')->url($awayLogo) }}" alt="" class="h-9 w-9 rounded-full border border-zinc-600 object-cover">
+                        @endif
+                        <span class="font-bold">{{ $away?->short_name ?? $away?->name }}</span>
+                    </div>
                 </div>
 
-                <div class="flex flex-wrap items-center gap-3">
-                    <div class="rounded-xl bg-zinc-800 px-5 py-2 text-center min-w-[7rem]">
-                        <p class="text-xs text-zinc-400">Placar</p>
-                        <p class="text-3xl font-black tabular-nums leading-tight">
-                            {{ $this->match->team_score }}
-                            <span class="text-zinc-500 text-xl">×</span>
-                            {{ $this->match->opponent_score }}
-                        </p>
+                <div class="flex flex-wrap items-center gap-2">
+                    <div class="rounded-xl bg-zinc-950 px-4 py-2 text-center ring-1 ring-amber-500/40">
+                        <p class="text-[10px] uppercase text-zinc-500">Período</p>
+                        <p class="text-2xl font-black text-amber-400">{{ $period }}º</p>
                     </div>
-
-                    <div class="flex gap-1.5">
-                        @foreach([1, 2, 3, 4] as $p)
-                            <button
-                                type="button"
-                                wire:click="setPeriod({{ $p }})"
-                                class="flex h-12 w-12 items-center justify-center rounded-xl text-sm font-bold transition
-                                    {{ $period === $p ? 'bg-amber-500 text-zinc-900' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700' }}"
-                            >
-                                {{ $p }}º
-                            </button>
-                        @endforeach
+                    <div class="min-w-[5.5rem] rounded-xl bg-zinc-950 px-4 py-2 text-center ring-1 ring-zinc-700">
+                        <p class="text-[10px] uppercase text-zinc-500">Relógio</p>
+                        <p class="font-mono text-2xl font-bold tabular-nums" wire:key="clk-{{ $clockRemaining }}">{{ sprintf('%d:%02d', intdiv($clockRemaining, 60), $clockRemaining % 60) }}</p>
                     </div>
-
-                    <a href="{{ route('filament.admin.resources.game-matches.index') }}"
-                        class="inline-flex h-12 items-center rounded-xl border border-zinc-600 px-4 text-sm font-medium text-zinc-200 hover:bg-zinc-800">
-                        Voltar às partidas
-                    </a>
+                    <button type="button" wire:click="toggleClock" class="min-h-11 rounded-xl bg-cyan-600 px-3 text-sm font-bold text-white">
+                        {{ $clockRunning ? 'Pausar' : 'Iniciar' }}
+                    </button>
+                    <button type="button" wire:click="endPeriod" class="min-h-11 rounded-xl bg-violet-600 px-3 text-sm font-bold text-white">
+                        Fim período
+                    </button>
                 </div>
+            </div>
+
+            <div class="mt-3 flex flex-wrap items-center gap-3">
+                <div class="inline-flex items-baseline gap-2 rounded-xl bg-zinc-800 px-3 py-1.5">
+                    <span class="text-xs text-zinc-400">{{ $homeTeam->short_name }}</span>
+                    <span class="text-2xl font-black tabular-nums leading-none text-emerald-400 sm:text-3xl">{{ $this->match->team_score }}</span>
+                </div>
+                <span class="text-zinc-500">×</span>
+                <label class="inline-flex items-baseline gap-2 rounded-xl bg-zinc-800 px-3 py-1.5">
+                    <span class="text-xs text-zinc-400">{{ $away?->short_name ?? 'ADV' }}</span>
+                    <input
+                        type="number"
+                        min="0"
+                        inputmode="numeric"
+                        wire:model.blur="opponentScore"
+                        class="w-10 min-w-0 border-0 bg-transparent p-0 text-center text-2xl font-black leading-none tabular-nums text-sky-400 focus:ring-0 sm:w-11 sm:text-3xl [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    >
+                </label>
+
+                <div class="flex gap-1">
+                    @foreach([1, 2, 3, 4] as $p)
+                        <button type="button" wire:click="setPeriod({{ $p }})"
+                            class="h-11 w-11 rounded-lg text-sm font-bold {{ $period === $p ? 'bg-amber-500 text-zinc-900' : 'bg-zinc-800 text-zinc-300' }}">
+                            {{ $p }}
+                        </button>
+                    @endforeach
+                </div>
+
+                <span x-show="!online" class="rounded-full bg-amber-500/20 px-3 py-1 text-xs font-semibold text-amber-300">Offline</span>
+                <span x-show="queueCount > 0" class="rounded-full bg-violet-500/20 px-3 py-1 text-xs font-semibold text-violet-200" x-text="`${queueCount} na fila`"></span>
+
+                <button type="button" @click="toggleSound()" class="ml-auto text-xs text-zinc-500 underline" x-text="soundOn ? 'Som ligado' : 'Som mudo'"></button>
+
+                <a href="{{ route('filament.admin.resources.game-matches.index') }}" class="rounded-xl border border-zinc-600 px-3 py-2 text-sm">Partidas</a>
             </div>
         </div>
     </header>
 
-    <main class="mx-auto max-w-5xl space-y-6 px-4 py-6">
-        {{-- Atletas --}}
+    <main class="mx-auto max-w-5xl space-y-4 px-4 py-4 pb-28">
         <section>
-            <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-400">
-                1. Toque no atleta
-            </h2>
-            <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
+            <h2 class="mb-2 text-xs font-semibold uppercase text-zinc-500">1 · Toque no atleta</h2>
+            <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
                 @foreach($this->match->athletes as $a)
-                    <button
-                        type="button"
-                        wire:click="selectAthlete({{ $a->id }})"
-                        wire:key="athlete-{{ $a->id }}"
-                        class="flex min-h-[5.5rem] items-stretch gap-2 rounded-2xl border-2 px-2 py-2 text-left transition active:scale-[0.98]
-                            {{ $selectedAthleteId === $a->id ? 'border-amber-500 bg-amber-500/15 ring-2 ring-amber-500/40' : 'border-zinc-700 bg-zinc-900 hover:border-zinc-600' }}"
-                    >
-                        <div class="flex min-w-0 flex-1 flex-col justify-center pl-1">
-                            <span class="text-2xl font-black text-amber-400">#{{ $a->jersey_number }}</span>
-                            <span class="mt-0.5 line-clamp-2 text-sm font-medium leading-tight">
-                                {{ $a->sport_name ?? $a->full_name }}
-                            </span>
-                        </div>
+                    <button type="button" wire:click="selectAthlete({{ $a->id }})" wire:key="ath-{{ $a->id }}"
+                        class="flex min-h-[5rem] items-center gap-2 rounded-2xl border-2 px-2 py-2 transition active:scale-[0.97]
+                            {{ $selectedAthleteId === $a->id ? 'border-amber-500 bg-amber-500/20 ring-2 ring-amber-500/50' : 'border-zinc-700 bg-zinc-900' }}">
+                        <span class="text-3xl font-black text-amber-400">#{{ $a->jersey_number }}</span>
+                        <span class="line-clamp-2 text-left text-sm font-semibold leading-tight">{{ $a->sport_name ?? $a->full_name }}</span>
                         @if($a->photo_path)
-                            <img
-                                src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($a->photo_path) }}"
-                                alt="{{ $a->full_name }}"
-                                class="my-auto h-14 w-14 shrink-0 rounded-full border-2 border-zinc-600 object-cover bg-zinc-800 shadow-inner
-                                    {{ $selectedAthleteId === $a->id ? 'border-amber-400' : '' }}"
-                            >
-                        @else
-                            <div class="my-auto flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-zinc-600 bg-zinc-800 text-base font-bold text-amber-400
-                                {{ $selectedAthleteId === $a->id ? 'border-amber-400' : '' }}">
-                                {{ $a->jersey_number }}
-                            </div>
+                            <img src="{{ Storage::disk('public')->url($a->photo_path) }}" alt="" class="ml-auto h-14 w-14 shrink-0 rounded-full object-cover">
                         @endif
                     </button>
                 @endforeach
@@ -126,156 +102,93 @@
         </section>
 
         @if($athlete)
-            <section class="rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
-                <p class="text-xs font-semibold uppercase text-zinc-500">Atleta selecionado</p>
-                <p class="mt-1 text-lg font-bold">#{{ $athlete->jersey_number }} — {{ $athlete->full_name }}</p>
-                <div class="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
-                    <div class="rounded-xl bg-zinc-800 p-3">
-                        <p class="text-zinc-400">2 pts</p>
-                        <p class="text-lg font-bold">{{ $stats['two_point']['made'] ?? 0 }}/{{ $stats['two_point']['attempts'] ?? 0 }}</p>
-                    </div>
-                    <div class="rounded-xl bg-zinc-800 p-3">
-                        <p class="text-zinc-400">3 pts</p>
-                        <p class="text-lg font-bold">{{ $stats['three_point']['made'] ?? 0 }}/{{ $stats['three_point']['attempts'] ?? 0 }}</p>
-                    </div>
-                    <div class="rounded-xl bg-zinc-800 p-3">
-                        <p class="text-zinc-400">LL</p>
-                        <p class="text-lg font-bold">{{ $stats['free_throw']['made'] ?? 0 }}/{{ $stats['free_throw']['attempts'] ?? 0 }}</p>
-                    </div>
+            <section class="rounded-2xl border border-zinc-800 bg-zinc-900 p-3">
+                <p class="text-xs text-zinc-500">Selecionado: <strong class="text-zinc-200">#{{ $athlete->jersey_number }} {{ $athlete->full_name }}</strong></p>
+            </section>
+
+            <section>
+                <h2 class="mb-2 text-xs font-semibold uppercase text-zinc-500">2 · Um toque = registra</h2>
+                <div class="grid grid-cols-2 gap-2 sm:grid-cols-3" wire:loading.class="opacity-60">
+                    @foreach([
+                        ['2PT', 'made', '+2', 'bg-emerald-600'],
+                        ['2PT', 'missed', '2 errado', 'bg-zinc-700'],
+                        ['3PT', 'made', '+3', 'bg-sky-600'],
+                        ['3PT', 'missed', '3 errado', 'bg-zinc-700'],
+                        ['FT', 'made', '+1 LL', 'bg-violet-600'],
+                        ['FT', 'missed', 'LL errado', 'bg-zinc-700'],
+                    ] as [$type, $res, $label, $color])
+                        <button type="button" @click="tryRegister('{{ $type }}', '{{ $res }}')"
+                            class="min-h-[4.5rem] rounded-2xl {{ $color }} text-lg font-black text-white shadow-lg active:scale-[0.98]">
+                            {{ $label }}
+                        </button>
+                    @endforeach
                 </div>
             </section>
 
-            <section class="rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
-                <div class="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                        <h2 class="text-sm font-semibold uppercase tracking-wide text-zinc-400">Mapa na quadra</h2>
-                        <p class="mt-1 text-xs text-zinc-500">Pontos azul/vermelho como no shot chart da NBA.</p>
-                    </div>
-                    <label class="inline-flex cursor-pointer items-center gap-2 text-sm">
-                        <input type="checkbox" wire:model.live="capturePosition" class="rounded border-zinc-600 bg-zinc-800 text-amber-500 focus:ring-amber-500">
-                        Marcar posição na quadra
+            <div class="flex gap-2">
+                <button type="button"
+                    class="flex-1 rounded-xl border-2 border-dashed border-zinc-600 py-4 text-center text-sm font-semibold text-zinc-400"
+                    @mousedown="startHoldUndo()" @mouseup="cancelHoldUndo()" @mouseleave="cancelHoldUndo()"
+                    @touchstart.prevent="startHoldUndo()" @touchend="cancelHoldUndo()">
+                    Segure ~0,6s para desfazer o último
+                </button>
+            </div>
+        @else
+            <p class="rounded-2xl border border-dashed border-zinc-600 p-8 text-center text-zinc-400">Selecione um atleta.</p>
+        @endif
+
+        <details class="rounded-2xl border border-zinc-800 bg-zinc-900/80">
+            <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-zinc-300">Mapa na quadra (opcional)</summary>
+            <div class="border-t border-zinc-800 p-4">
+                <label class="mb-3 flex items-center gap-2 text-sm">
+                    <input type="checkbox" wire:model.live="showCourtMap" class="rounded border-zinc-600 bg-zinc-800 text-amber-500">
+                    Mostrar mapa
+                </label>
+                @if($showCourtMap)
+                    <label class="mb-3 flex items-center gap-2 text-sm">
+                        <input type="checkbox" wire:model.live="capturePosition" class="rounded border-zinc-600 bg-zinc-800 text-amber-500">
+                        Marcar posição antes do arremesso
                     </label>
-                </div>
-                <div class="mt-4" @if($capturePosition) wire:key="court-active" @endif>
                     <x-shot-court-map
                         :points="$this->courtPreviewPoints"
                         :interactive="$capturePosition"
                         :marker-x="$courtX"
                         :marker-y="$courtY"
-                        height-class="max-h-[280px]"
+                        height-class="max-h-[220px]"
                     />
-                </div>
-            </section>
-
-            <section>
-                <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-400">
-                    2. Registre o arremesso
-                </h2>
-                <div class="space-y-4" wire:loading.class="pointer-events-none opacity-70">
-                    <div class="rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
-                        <h3 class="mb-3 font-semibold text-emerald-400">2 pontos</h3>
-                        <div class="grid grid-cols-2 gap-3">
-                            <button type="button" wire:click="register('2PT', 'made')"
-                                class="min-h-[4.5rem] rounded-2xl bg-emerald-600 text-lg font-bold text-white shadow-md active:scale-[0.98]">
-                                +2 convertido
-                            </button>
-                            <button type="button" wire:click="register('2PT', 'missed')"
-                                class="min-h-[4.5rem] rounded-2xl bg-zinc-700 text-lg font-bold text-white active:scale-[0.98]">
-                                Errou
-                            </button>
-                        </div>
-                    </div>
-                    <div class="rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
-                        <h3 class="mb-3 font-semibold text-sky-400">3 pontos</h3>
-                        <div class="grid grid-cols-2 gap-3">
-                            <button type="button" wire:click="register('3PT', 'made')"
-                                class="min-h-[4.5rem] rounded-2xl bg-sky-600 text-lg font-bold text-white shadow-md active:scale-[0.98]">
-                                +3 convertido
-                            </button>
-                            <button type="button" wire:click="register('3PT', 'missed')"
-                                class="min-h-[4.5rem] rounded-2xl bg-zinc-700 text-lg font-bold text-white active:scale-[0.98]">
-                                Errou
-                            </button>
-                        </div>
-                    </div>
-                    <div class="rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
-                        <h3 class="mb-3 font-semibold text-violet-400">Lance livre</h3>
-                        <div class="grid grid-cols-2 gap-3">
-                            <button type="button" wire:click="register('FT', 'made')"
-                                class="min-h-[4.5rem] rounded-2xl bg-violet-600 text-lg font-bold text-white shadow-md active:scale-[0.98]">
-                                +1 convertido
-                            </button>
-                            <button type="button" wire:click="register('FT', 'missed')"
-                                class="min-h-[4.5rem] rounded-2xl bg-zinc-700 text-lg font-bold text-white active:scale-[0.98]">
-                                Errou
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <button type="button" wire:click="undoLast"
-                    wire:confirm="Desfazer o último lançamento desta partida?"
-                    class="mt-4 w-full rounded-xl border border-zinc-600 bg-zinc-800 py-3 text-sm font-semibold hover:bg-zinc-700 sm:w-auto sm:px-6">
-                    Desfazer último lançamento
-                </button>
-            </section>
-        @else
-            <p class="rounded-2xl border border-dashed border-zinc-600 bg-zinc-900/50 p-8 text-center text-zinc-400">
-                Selecione um atleta acima para liberar os botões de arremesso.
-            </p>
-        @endif
-
-        <section class="grid gap-4 sm:grid-cols-2">
-            <div class="rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
-                <h3 class="text-sm font-semibold text-zinc-400">Totais da partida</h3>
-                <p class="mt-2 text-sm">
-                    {{ $mStats['overall']['points'] ?? 0 }} pontos ·
-                    {{ $mStats['overall']['attempts'] ?? 0 }} tentativas ·
-                    aproveitamento:
-                    {{ $mStats['overall']['percentage'] !== null ? $mStats['overall']['percentage'] . '%' : 'N/A' }}
-                </p>
+                @endif
             </div>
-            <div class="rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
-                <h3 class="text-sm font-semibold text-zinc-400">Últimos lançamentos</h3>
-                <ul class="mt-2 max-h-40 space-y-2 overflow-y-auto text-sm">
-                    @forelse($this->recentAttempts as $item)
-                        <li class="flex items-center justify-between gap-2 rounded-lg bg-zinc-800 px-3 py-2" wire:key="att-{{ $item->id }}">
-                            <span class="truncate">
-                                #{{ $item->athlete->jersey_number }}
-                                {{ $item->shot_type->label() }}
-                                — {{ $item->result->label() }}
-                                ({{ $item->period }}º)
-                            </span>
-                            <button type="button" wire:click="promptDelete({{ $item->id }})" class="shrink-0 text-xs text-red-400">
-                                Excluir
-                            </button>
-                        </li>
-                    @empty
-                        <li class="text-zinc-500">Nenhum registro ainda.</li>
-                    @endforelse
-                </ul>
+        </details>
+
+        <section class="grid gap-3 sm:grid-cols-2 text-sm text-zinc-400">
+            <div class="rounded-xl border border-zinc-800 bg-zinc-900 p-3">
+                Partida: {{ $mStats['overall']['points'] ?? 0 }} pts · {{ $mStats['overall']['attempts'] ?? 0 }} tent. · FG {{ $mStats['overall']['percentage'] ?? 'N/A' }}%
+            </div>
+            <div class="rounded-xl border border-zinc-800 bg-zinc-900 p-3 max-h-32 overflow-y-auto">
+                @forelse($this->recentAttempts as $item)
+                    <div class="flex justify-between border-b border-zinc-800 py-1" wire:key="r-{{ $item->id }}">
+                        <span>#{{ $item->athlete->jersey_number }} {{ $item->shot_type->label() }} {{ $item->result->label() }}</span>
+                        <button type="button" wire:click="promptDelete({{ $item->id }})" class="text-red-400 text-xs">Excluir</button>
+                    </div>
+                @empty
+                    <span class="text-zinc-600">Nenhum lançamento.</span>
+                @endforelse
             </div>
         </section>
     </main>
 
+    <div id="scout-toast" class="fixed bottom-20 left-1/2 z-50 hidden -translate-x-1/2 rounded-full px-4 py-2 text-sm font-semibold shadow-lg"></div>
+    <div wire:loading.flex class="fixed bottom-4 left-1/2 z-40 -translate-x-1/2 rounded-full bg-amber-500 px-4 py-2 text-sm font-bold text-zinc-900">Salvando…</div>
+
     @if($confirmDeleteId)
-        <div class="fixed inset-0 z-50 flex items-end justify-center bg-black/80 p-4 sm:items-center">
-            <div class="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-900 p-6 shadow-2xl">
-                <h4 class="text-lg font-bold">Excluir lançamento?</h4>
-                <p class="mt-2 text-sm text-zinc-400">O placar será ajustado se o arremesso tiver sido convertido.</p>
-                <div class="mt-6 flex gap-3">
-                    <button type="button" wire:click="cancelDelete" class="flex-1 rounded-xl bg-zinc-800 py-3 font-medium">
-                        Cancelar
-                    </button>
-                    <button type="button" wire:click="confirmDelete" class="flex-1 rounded-xl bg-red-600 py-3 font-semibold text-white">
-                        Excluir
-                    </button>
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+            <div class="w-full max-w-sm rounded-2xl bg-zinc-900 p-6">
+                <p class="font-bold">Excluir lançamento?</p>
+                <div class="mt-4 flex gap-2">
+                    <button type="button" wire:click="cancelDelete" class="flex-1 rounded-xl bg-zinc-800 py-3">Cancelar</button>
+                    <button type="button" wire:click="confirmDelete" class="flex-1 rounded-xl bg-red-600 py-3 text-white">Excluir</button>
                 </div>
             </div>
         </div>
     @endif
-
-    <div wire:loading.flex class="fixed bottom-4 left-1/2 z-40 -translate-x-1/2 items-center gap-2 rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-zinc-900 shadow-lg">
-        Salvando…
-    </div>
 </div>

@@ -4,8 +4,10 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\OpponentResource\Pages;
 use App\Models\Opponent;
+use App\Models\Team;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -26,7 +28,21 @@ class OpponentResource extends Resource
             Forms\Components\Section::make()->columns(2)->schema([
                 Forms\Components\TextInput::make('name')->label('Nome')->required()->maxLength(255),
                 Forms\Components\TextInput::make('short_name')->label('Nome abreviado')->maxLength(20),
-                Forms\Components\FileUpload::make('logo_path')->label('Logotipo')->image()->directory('opponents/logos')->disk('public')->imageEditor()->columnSpanFull(),
+                Forms\Components\Select::make('linked_team_id')
+                    ->label('Equipe espelho')
+                    ->placeholder('Nenhuma — usar só logo própria')
+                    ->helperText('Vincula a um cadastro de Equipe para reutilizar logotipo e evitar duplicar dados.')
+                    ->options(fn () => Team::query()->orderBy('name')->pluck('name', 'id'))
+                    ->searchable()
+                    ->live(),
+                Forms\Components\FileUpload::make('logo_path')
+                    ->label('Logotipo')
+                    ->helperText(fn (Get $get) => $get('linked_team_id') ? 'Opcional: se vazio, copia o logo da equipe espelho ao salvar.' : '')
+                    ->image()
+                    ->directory('opponents/logos')
+                    ->disk('public')
+                    ->imageEditor()
+                    ->columnSpanFull(),
             ]),
         ]);
     }
@@ -37,6 +53,7 @@ class OpponentResource extends Resource
             Tables\Columns\ImageColumn::make('logo_path')->label('Logo')->disk('public')->circular(),
             Tables\Columns\TextColumn::make('name')->label('Nome')->searchable()->sortable(),
             Tables\Columns\TextColumn::make('short_name')->label('Sigla')->searchable(),
+            Tables\Columns\TextColumn::make('linkedTeam.name')->label('Equipe espelho')->placeholder('—'),
             Tables\Columns\TextColumn::make('matches_count')->label('Partidas')->counts('matches'),
         ])->actions([Tables\Actions\EditAction::make()])->bulkActions([
             Tables\Actions\BulkActionGroup::make([Tables\Actions\DeleteBulkAction::make()]),

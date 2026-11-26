@@ -56,6 +56,11 @@ class DemoDataSeeder extends Seeder
             ['short_name' => 'EQB']
         );
 
+        // Equipe espelho demo — adversário reutiliza logo da Equipe B
+        if ($teamB->exists && ! $opponentB->linked_team_id) {
+            $opponentB->update(['linked_team_id' => $teamB->id]);
+        }
+
         $this->seedAthletesForTeam($teamA, 'A');
         $this->seedAthletesForTeam($teamB, 'B');
 

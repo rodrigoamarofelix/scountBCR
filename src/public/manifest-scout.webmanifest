@@ -1,0 +1,10 @@
+{
+  "name": "ScountBCR Scout",
+  "short_name": "Scout",
+  "description": "Scouting ao vivo basquete",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#f59e0b",
+  "lang": "pt-BR"
+}

@@ -8,11 +8,11 @@ use App\Models\Athlete;
 use App\Models\GameMatch;
 use App\Models\ShotAttempt;
 use App\Services\MatchScoutingService;
-use App\Services\ShotChartService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -29,6 +29,8 @@ class MatchScouting extends Component
 
     public int $period = 1;
 
+    public bool $showCourtMap = false;
+
     public bool $capturePosition = false;
 
     public ?float $courtX = null;
@@ -37,18 +39,32 @@ class MatchScouting extends Component
 
     public ?int $confirmDeleteId = null;
 
+    public int $opponentScore = 0;
+
+    public int $clockRemaining = 600;
+
+    public bool $clockRunning = false;
+
     public function mount(GameMatch $gameMatch): void
     {
         $this->authorize('scout', $gameMatch);
         $this->matchId = $gameMatch->id;
         $this->selectedAthleteId = $gameMatch->athletes()->orderBy('jersey_number')->value('athletes.id');
+        $this->opponentScore = (int) $gameMatch->opponent_score;
+        $length = (int) ($gameMatch->scout_period_length ?: 600);
+        $this->clockRemaining = (int) ($gameMatch->scout_clock_remaining ?? $length);
+        $this->clockRunning = $gameMatch->scout_clock_running_at !== null;
+        if ($this->clockRunning && $gameMatch->scout_clock_running_at) {
+            $elapsed = (int) now()->diffInSeconds($gameMatch->scout_clock_running_at);
+            $this->clockRemaining = max(0, $this->clockRemaining - $elapsed);
+        }
     }
 
     #[Computed]
     public function match(): GameMatch
     {
         return GameMatch::query()
-            ->with(['team', 'opponent', 'competition', 'athletes' => fn ($q) => $q->orderBy('jersey_number')])
+            ->with(['team', 'opponent.linkedTeam', 'competition', 'athletes' => fn ($q) => $q->orderBy('jersey_number')])
             ->findOrFail($this->matchId);
     }
 
@@ -117,6 +133,61 @@ class MatchScouting extends Component
     public function setPeriod(int $period): void
     {
         $this->period = max(1, min(8, $period));
+        $this->persistClock();
+    }
+
+    public function endPeriod(): void
+    {
+        if ($this->period < 8) {
+            $this->period++;
+        }
+        $this->clockRunning = false;
+        $this->clockRemaining = (int) ($this->match->scout_period_length ?: 600);
+        $this->persistClock();
+        $this->dispatch('scout-toast', message: 'Período encerrado — '.$this->period.'º', type: 'success');
+    }
+
+    public function toggleClock(): void
+    {
+        $this->clockRunning = ! $this->clockRunning;
+        $this->persistClock();
+    }
+
+    public function resetClock(): void
+    {
+        $this->clockRunning = false;
+        $this->clockRemaining = (int) ($this->match->scout_period_length ?: 600);
+        $this->persistClock();
+    }
+
+    public function tickClock(): void
+    {
+        if (! $this->clockRunning || $this->clockRemaining <= 0) {
+            return;
+        }
+
+        $this->clockRemaining--;
+        if ($this->clockRemaining <= 0) {
+            $this->clockRunning = false;
+            $this->dispatch('scout-toast', message: 'Tempo esgotado.', type: 'warning');
+        }
+        $this->persistClock();
+    }
+
+    protected function persistClock(): void
+    {
+        GameMatch::query()->whereKey($this->matchId)->update([
+            'scout_clock_remaining' => $this->clockRemaining,
+            'scout_clock_running_at' => $this->clockRunning ? now() : null,
+        ]);
+    }
+
+    public function updatedOpponentScore($value): void
+    {
+        $score = max(0, (int) $value);
+        $this->opponentScore = $score;
+        GameMatch::query()->whereKey($this->matchId)->update(['opponent_score' => $score]);
+        unset($this->match);
     }
 
     public function pickCourtPosition(float $offsetX, float $offsetY, float $width, float $height): void
@@ -131,11 +202,18 @@ class MatchScouting extends Component
         $this->courtY = round(($offsetY / $h) * 100, 2);
     }
 
-    public function register(string $shotType, string $result): void
+    public function register(string $shotType, string $result, ?int $athleteId = null): void
     {
-        $athlete = $this->selectedAthlete;
-        if (! $athlete) {
+        $athleteId = $athleteId ?? $this->selectedAthleteId;
+        if (! $athleteId) {
             $this->dispatch('scout-toast', message: 'Selecione um atleta.', type: 'warning');
+
+            return;
+        }
+
+        $athlete = $this->match->athletes->firstWhere('id', $athleteId);
+        if (! $athlete) {
+            $this->dispatch('scout-toast', message: 'Atleta inválido.', type: 'warning');
 
             return;
         }
@@ -171,6 +249,15 @@ class MatchScouting extends Component
 
         unset($this->match, $this->matchStats, $this->athleteStats, $this->recentAttempts, $this->courtPreviewPoints);
         $this->dispatch('scout-toast', message: 'Lançamento registrado.', type: 'success');
+        $this->dispatch('scout-feedback', kind: 'success');
+    }
+
+    #[On('flush-offline-queue')]
+    public function flushOfflineQueue(): void
+    {
+        unset($this->match, $this->matchStats, $this->athleteStats, $this->recentAttempts, $this->courtPreviewPoints);
+        $this->dispatch('scout-feedback', kind: 'success');
+        $this->dispatch('scout-toast', message: 'Fila offline sincronizada.', type: 'success');
     }
 
     public function undoLast(): void
@@ -185,6 +272,7 @@ class MatchScouting extends Component
 
         unset($this->match, $this->matchStats, $this->athleteStats, $this->recentAttempts, $this->courtPreviewPoints);
         $this->dispatch('scout-toast', message: 'Último lançamento desfeito.', type: 'success');
+        $this->dispatch('scout-feedback', kind: 'undo');
     }
 
     public function promptDelete(int $attemptId): void
