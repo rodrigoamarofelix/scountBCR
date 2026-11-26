@@ -1,5 +1,7 @@
 # ScountBCR — Sistema de Scouting Estatístico de Basquete
 
+[![CI](https://github.com/rodrigoamarofelix/scountBCR/actions/workflows/ci.yml/badge.svg)](https://github.com/rodrigoamarofelix/scountBCR/actions/workflows/ci.yml)
+
 Stack: Laravel 11, Filament 3, Livewire 3, PostgreSQL, Docker/Nginx.
 
 ## Subir ambiente
@@ -29,6 +31,17 @@ Acesso: http://localhost:8082 — Painel admin: `/admin`
 - **App (Breeze):** http://localhost:8082/login  
 - **Painel Filament:** http://localhost:8082/admin  
 - **Usuário inicial:** `admin@scountbcr.local` / `password` (alterar em produção)
+
+
+## Integração contínua
+
+A cada push ou pull request na branch `main`, o GitHub Actions executa:
+
+```bash
+php artisan test --testsuite=Domain
+```
+
+Workflow: [.github/workflows/ci.yml](.github/workflows/ci.yml)
 
 ## Documentação
 
