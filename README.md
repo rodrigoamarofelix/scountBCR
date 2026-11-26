@@ -33,9 +33,19 @@ Acesso: http://localhost:8082 — Painel admin: `/admin`
 - **Usuário inicial:** `admin@scountbcr.local` / `password` (alterar em produção)
 
 
+## Banco de dados
+
+| Ambiente | Banco |
+|----------|--------|
+| Docker (desenvolvimento) | **PostgreSQL 16** — serviço `db` no `docker-compose.yml` (host: porta **5435**) |
+| Testes (`php artisan test` no container) | **PostgreSQL** — `src/.env.testing` aponta para o host `db` |
+| CI (GitHub Actions) | **PostgreSQL 16** — mesmo motor, via service container |
+
+A aplicação **sempre** foi pensada para PostgreSQL. SQLite só tinha sido usado temporariamente no `phpunit.xml` para testes rápidos; isso foi removido.
+
 ## Integração contínua
 
-A cada push ou pull request na branch `main`, o GitHub Actions executa:
+A cada push ou pull request na branch `main`, o GitHub Actions sobe **PostgreSQL 16** e executa:
 
 ```bash
 php artisan test --testsuite=Domain
