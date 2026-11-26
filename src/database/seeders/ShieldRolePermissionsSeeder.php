@@ -16,6 +16,16 @@ class ShieldRolePermissionsSeeder extends Seeder
 
         $all = Permission::query()->pluck('name')->all();
 
+        if ($all === []) {
+            if ($this->command !== null) {
+                $this->command->warn('Nenhuma permissão no banco. Execute antes: php artisan shield:generate --all --panel=admin --option=permissions --no-interaction');
+            }
+
+            $this->ensureAdministratorUser();
+
+            return;
+        }
+
         Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']);
         $admin = Role::firstOrCreate(['name' => 'administrador', 'guard_name' => 'web']);
         $treinador = Role::firstOrCreate(['name' => 'treinador', 'guard_name' => 'web']);

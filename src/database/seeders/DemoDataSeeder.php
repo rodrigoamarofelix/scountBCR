@@ -4,7 +4,12 @@ namespace Database\Seeders;
 
 use App\Enums\BasketballPosition;
 use App\Enums\MatchStatus;
+use App\Enums\ShotResult;
+use App\Enums\ShotType;
 use App\Models\Athlete;
+use App\Models\ShotAttempt;
+use App\Models\User;
+use App\Services\ShotChartService;
 use App\Models\Competition;
 use App\Models\GameMatch;
 use App\Models\Opponent;
@@ -85,6 +90,56 @@ class DemoDataSeeder extends Seeder
             $sync[$id] = ['is_starter' => $index < 2];
         }
         $match->athletes()->sync($sync);
+
+        $this->seedShotAttempts($match, $athletesA);
+    }
+
+    private function seedShotAttempts(GameMatch $match, $athleteIds): void
+    {
+        if (ShotAttempt::query()->where('match_id', $match->id)->whereNotNull('court_x')->exists()) {
+            return;
+        }
+
+        $existing = ShotAttempt::query()->where('match_id', $match->id)->whereNull('court_x')->get();
+        foreach ($existing as $shot) {
+            [$x, $y] = ShotChartService::randomCoordinatesForType($shot->shot_type->value);
+            $shot->update(['court_x' => $x, 'court_y' => $y]);
+        }
+        if ($existing->isNotEmpty()) {
+            return;
+        }
+
+        $recorder = User::query()->orderBy('id')->first();
+        if (! $recorder) {
+            $recorder = User::firstOrCreate(
+                ['email' => 'admin@scountbcr.local'],
+                [
+                    'name' => 'Administrador',
+                    'password' => \Illuminate\Support\Facades\Hash::make('password'),
+                ]
+            );
+        }
+
+        $types = [ShotType::TwoPoint, ShotType::ThreePoint, ShotType::FreeThrow];
+
+        foreach (range(1, 48) as $i) {
+            $athleteId = $athleteIds->random();
+            $type = fake()->randomElement($types);
+            $made = fake()->boolean(42);
+            [$x, $y] = ShotChartService::randomCoordinatesForType($type->value);
+
+            ShotAttempt::create([
+                'match_id' => $match->id,
+                'athlete_id' => $athleteId,
+                'shot_type' => $type,
+                'result' => $made ? ShotResult::Made : ShotResult::Missed,
+                'period' => fake()->numberBetween(1, 4),
+                'court_x' => $x,
+                'court_y' => $y,
+                'recorded_by' => $recorder->id,
+                'occurred_at' => now()->subMinutes(60 - $i),
+            ]);
+        }
     }
 
     private function seedAthletesForTeam(Team $team, string $suffix): void

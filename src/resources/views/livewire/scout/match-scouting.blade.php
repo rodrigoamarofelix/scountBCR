@@ -10,10 +10,41 @@
             <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-wider text-amber-400">Scouting ao vivo</p>
-                    <h1 class="mt-1 text-xl font-bold sm:text-2xl">
-                        {{ $this->match->team->short_name }}
+                    @php
+                        $homeTeam = $this->match->team;
+                        $away = $this->match->opponent;
+                    @endphp
+                    <h1 class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xl font-bold sm:gap-x-3 sm:text-2xl">
+                        <span class="inline-flex items-center gap-2">
+                            @if($homeTeam->logo_path)
+                                <img
+                                    src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($homeTeam->logo_path) }}"
+                                    alt="{{ $homeTeam->name }}"
+                                    class="h-12 w-12 shrink-0 rounded-full border-2 border-zinc-600 bg-zinc-800 object-cover shadow-inner sm:h-14 sm:w-14"
+                                >
+                            @else
+                                <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-zinc-600 bg-zinc-800 text-sm font-black text-amber-400 sm:h-14 sm:w-14 sm:text-base">
+                                    {{ $homeTeam->short_name }}
+                                </span>
+                            @endif
+                            <span>{{ $homeTeam->short_name }}</span>
+                        </span>
                         <span class="text-zinc-500">vs</span>
-                        {{ $this->match->opponent->short_name ?? $this->match->opponent->name }}
+                        <span class="inline-flex items-center gap-2">
+                            @php $awayLogo = $away?->resolvedLogoPath(); @endphp
+                            @if($awayLogo)
+                                <img
+                                    src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($awayLogo) }}"
+                                    alt="{{ $away->name }}"
+                                    class="h-12 w-12 shrink-0 rounded-full border-2 border-zinc-600 bg-zinc-800 object-cover shadow-inner sm:h-14 sm:w-14"
+                                >
+                            @else
+                                <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-zinc-600 bg-zinc-800 text-sm font-black text-sky-400 sm:h-14 sm:w-14 sm:text-base">
+                                    {{ $away?->short_name ?? '?' }}
+                                </span>
+                            @endif
+                            <span>{{ $away?->short_name ?? $away?->name }}</span>
+                        </span>
                     </h1>
                     <p class="mt-1 text-sm text-zinc-400">
                         {{ $this->match->match_date->format('d/m/Y') }}
@@ -111,6 +142,28 @@
                         <p class="text-zinc-400">LL</p>
                         <p class="text-lg font-bold">{{ $stats['free_throw']['made'] ?? 0 }}/{{ $stats['free_throw']['attempts'] ?? 0 }}</p>
                     </div>
+                </div>
+            </section>
+
+            <section class="rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h2 class="text-sm font-semibold uppercase tracking-wide text-zinc-400">Mapa na quadra</h2>
+                        <p class="mt-1 text-xs text-zinc-500">Pontos azul/vermelho como no shot chart da NBA.</p>
+                    </div>
+                    <label class="inline-flex cursor-pointer items-center gap-2 text-sm">
+                        <input type="checkbox" wire:model.live="capturePosition" class="rounded border-zinc-600 bg-zinc-800 text-amber-500 focus:ring-amber-500">
+                        Marcar posição na quadra
+                    </label>
+                </div>
+                <div class="mt-4" @if($capturePosition) wire:key="court-active" @endif>
+                    <x-shot-court-map
+                        :points="$this->courtPreviewPoints"
+                        :interactive="$capturePosition"
+                        :marker-x="$courtX"
+                        :marker-y="$courtY"
+                        height-class="max-h-[280px]"
+                    />
                 </div>
             </section>
 

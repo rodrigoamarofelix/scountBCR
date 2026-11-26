@@ -8,6 +8,7 @@ use App\Models\Athlete;
 use App\Models\GameMatch;
 use App\Models\ShotAttempt;
 use App\Services\MatchScoutingService;
+use App\Services\ShotChartService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -27,6 +28,12 @@ class MatchScouting extends Component
     public ?int $selectedAthleteId = null;
 
     public int $period = 1;
+
+    public bool $capturePosition = false;
+
+    public ?float $courtX = null;
+
+    public ?float $courtY = null;
 
     public ?int $confirmDeleteId = null;
 
@@ -83,6 +90,20 @@ class MatchScouting extends Component
             ->get();
     }
 
+    #[Computed]
+    public function courtPreviewPoints(): array
+    {
+        return $this->recentAttempts
+            ->filter(fn (ShotAttempt $s) => $s->court_x !== null && $s->court_y !== null)
+            ->map(fn (ShotAttempt $s) => [
+                'x' => (float) $s->court_x,
+                'y' => (float) $s->court_y,
+                'made' => $s->result === ShotResult::Made,
+            ])
+            ->values()
+            ->all();
+    }
+
     public function selectAthlete(int $athleteId): void
     {
         if (! $this->match->athletes->contains('id', $athleteId)) {
@@ -98,6 +119,18 @@ class MatchScouting extends Component
         $this->period = max(1, min(8, $period));
     }
 
+    public function pickCourtPosition(float $offsetX, float $offsetY, float $width, float $height): void
+    {
+        if (! $this->capturePosition) {
+            return;
+        }
+
+        $w = max(1.0, $width);
+        $h = max(1.0, $height);
+        $this->courtX = round(($offsetX / $w) * 100, 2);
+        $this->courtY = round(($offsetY / $h) * 100, 2);
+    }
+
     public function register(string $shotType, string $result): void
     {
         $athlete = $this->selectedAthlete;
@@ -107,6 +140,19 @@ class MatchScouting extends Component
             return;
         }
 
+        $courtX = null;
+        $courtY = null;
+
+        if ($this->capturePosition) {
+            if ($this->courtX === null || $this->courtY === null) {
+                $this->dispatch('scout-toast', message: 'Toque na quadra para marcar a posição.', type: 'warning');
+
+                return;
+            }
+            $courtX = $this->courtX;
+            $courtY = $this->courtY;
+        }
+
         app(MatchScoutingService::class)->record(
             $this->match,
             $athlete,
@@ -114,9 +160,16 @@ class MatchScouting extends Component
             ShotResult::from($result),
             $this->period,
             auth()->user(),
+            $courtX,
+            $courtY,
         );
 
-        unset($this->match, $this->matchStats, $this->athleteStats, $this->recentAttempts);
+        if ($this->capturePosition) {
+            $this->courtX = null;
+            $this->courtY = null;
+        }
+
+        unset($this->match, $this->matchStats, $this->athleteStats, $this->recentAttempts, $this->courtPreviewPoints);
         $this->dispatch('scout-toast', message: 'Lançamento registrado.', type: 'success');
     }
 
@@ -130,7 +183,7 @@ class MatchScouting extends Component
             return;
         }
 
-        unset($this->match, $this->matchStats, $this->athleteStats, $this->recentAttempts);
+        unset($this->match, $this->matchStats, $this->athleteStats, $this->recentAttempts, $this->courtPreviewPoints);
         $this->dispatch('scout-toast', message: 'Último lançamento desfeito.', type: 'success');
     }
 
@@ -157,7 +210,7 @@ class MatchScouting extends Component
         app(MatchScoutingService::class)->deleteAttempt($attempt);
         $this->confirmDeleteId = null;
 
-        unset($this->match, $this->matchStats, $this->athleteStats, $this->recentAttempts);
+        unset($this->match, $this->matchStats, $this->athleteStats, $this->recentAttempts, $this->courtPreviewPoints);
         $this->dispatch('scout-toast', message: 'Lançamento excluído.', type: 'success');
     }
 

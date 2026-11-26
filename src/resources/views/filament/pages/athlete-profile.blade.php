@@ -70,4 +70,21 @@
             </table>
         </div>
     </x-filament::section>
+
+    <x-filament::section class="mt-6" heading="Mapa de arremessos (shot chart)">
+        @if(count($this->shotMapPoints) === 0)
+            <p class="text-sm text-gray-500">Sem coordenadas ainda. Use o scouting com «Marcar posição na quadra» ou reexecute os seeders de demo.</p>
+        @else
+            <x-shot-court-map :points="$this->shotMapPoints" />
+            <div class="mt-4 grid grid-cols-3 gap-3 text-sm">
+                @foreach($this->shotZones as $z)
+                    <div class="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+                        <p class="text-gray-500">{{ $z['label'] }}</p>
+                        <p class="font-semibold">{{ $z['percentage'] === null ? 'N/A' : $z['percentage'].'%' }} <span class="text-gray-400">({{ $z['attempts'] }} tent.)</span></p>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+    </x-filament::section>
+
 </x-filament-panels::page>

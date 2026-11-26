@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Models\Athlete;
 use App\Services\ReportService;
+use App\Services\ShotChartService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -106,9 +107,33 @@ class AthleteProfile extends Page implements HasForms
         );
     }
 
+    #[Computed]
+    public function shotMapPoints(): array
+    {
+        if ($this->athlete === null) {
+            return [];
+        }
+
+        return app(ShotChartService::class)->scatterPoints([
+            'athlete_id' => $this->athlete->id,
+        ]);
+    }
+
+    #[Computed]
+    public function shotZones(): array
+    {
+        if ($this->athlete === null) {
+            return [];
+        }
+
+        return app(ShotChartService::class)->zoneSummary([
+            'athlete_id' => $this->athlete->id,
+        ]);
+    }
+
     public function updatedFilters(): void
     {
-        unset($this->report);
+        unset($this->report, $this->shotMapPoints, $this->shotZones);
     }
 
     public static function getUrl(array $parameters = [], bool $isAbsolute = true, ?string $panel = null, ?\Illuminate\Database\Eloquent\Model $tenant = null): string

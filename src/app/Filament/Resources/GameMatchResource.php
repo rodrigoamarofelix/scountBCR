@@ -51,8 +51,22 @@ class GameMatchResource extends Resource
     {
         return $table->defaultSort('match_date', 'desc')->columns([
             Tables\Columns\TextColumn::make('match_date')->label('Data')->date('d/m/Y')->sortable(),
-            Tables\Columns\TextColumn::make('team.short_name')->label('Equipe'),
-            Tables\Columns\TextColumn::make('opponent.name')->label('Adversário')->limit(20),
+            Tables\Columns\ViewColumn::make('team.short_name')
+                ->label('Equipe')
+                ->view('filament.tables.columns.logo-and-name')
+                ->viewData(fn (GameMatch $record): array => [
+                    'name' => $record->team?->short_name ?? $record->team?->name ?? '—',
+                    'logoPath' => $record->team?->logo_path,
+                    'fallback' => $record->team?->short_name ?? '?',
+                ]),
+            Tables\Columns\ViewColumn::make('opponent.name')
+                ->label('Adversário')
+                ->view('filament.tables.columns.logo-and-name')
+                ->viewData(fn (GameMatch $record): array => [
+                    'name' => $record->opponent?->short_name ?? $record->opponent?->name ?? '—',
+                    'logoPath' => $record->opponent?->resolvedLogoPath(),
+                    'fallback' => $record->opponent?->short_name ?? substr($record->opponent?->name ?? '?', 0, 3),
+                ]),
             Tables\Columns\TextColumn::make('competition.name')->label('Competição')->toggleable(),
             Tables\Columns\TextColumn::make('status')->label('Situação')->badge()->formatStateUsing(fn ($state) => $state instanceof MatchStatus ? $state->label() : MatchStatus::from($state)->label()),
             Tables\Columns\TextColumn::make('score')->label('Placar')->state(fn (GameMatch $r) => "{$r->team_score} x {$r->opponent_score}"),

@@ -40,10 +40,12 @@ class MatchScoutingService
         ShotResult $result,
         int $period,
         User $recorder,
+        ?float $courtX = null,
+        ?float $courtY = null,
     ): ShotAttempt {
         $this->ensureAthleteOnMatch($match, $athlete);
 
-        return DB::transaction(function () use ($match, $athlete, $shotType, $result, $period, $recorder) {
+        return DB::transaction(function () use ($match, $athlete, $shotType, $result, $period, $recorder, $courtX, $courtY) {
             if ($match->status === MatchStatus::Scheduled) {
                 $match->update(['status' => MatchStatus::InProgress]);
             }
@@ -54,6 +56,8 @@ class MatchScoutingService
                 'shot_type' => $shotType,
                 'result' => $result,
                 'period' => $period,
+                'court_x' => $courtX,
+                'court_y' => $courtY,
                 'recorded_by' => $recorder->id,
                 'occurred_at' => now(),
             ]);
